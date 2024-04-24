@@ -5,6 +5,10 @@ __pycache__/
 
 # project specific files:
 EMEC-2021_events.*
+# macos
+.DS_Store  
+# pycharmm:
+.idea/
 
 # C extensions
 *.so
