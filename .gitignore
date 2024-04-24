@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# project specific files:
+EMEC-2021_events.*
+
 # C extensions
 *.so
 
