@@ -1,12 +1,15 @@
 import urllib.request
 import zipfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, MINYEAR
 from io import BytesIO
-from os.path import dirname, join
+from os.path import dirname, join, isfile
 
 import pandas as pd
 
 FILENAME = 'EMEC-2021_events'
+
+SOURCE_URL = ('https://datapub.gfz-potsdam.de/download/'
+              '10.5880.GFZ.EMEC.2021.001-Lewfnu/EMEC-2021.zip')
 
 
 class EmecField:
@@ -21,7 +24,12 @@ class EmecField:
     iscid = 'isc_id'
 
 
-def read_emec(url, save=True) -> pd.DataFrame:
+def get_source_catalog(url, save=True) -> pd.DataFrame:
+    file_path = join(dirname(__file__), FILENAME + '.hdf')
+
+    if isfile(file_path):
+        return pd.read_hdf(file_path)  # noqa
+
     with urllib.request.urlopen(url) as _:
         zip_file = zipfile.ZipFile(BytesIO(_.read()))
     ret = pd.read_csv(zip_file.open(FILENAME + '.csv'))
@@ -56,22 +64,23 @@ def read_emec(url, save=True) -> pd.DataFrame:
         EmecField.lat: ret[EmecField.lat].astype(float),
         EmecField.lon: ret[EmecField.lon].astype(float),
         EmecField.mag: ret['originalmag'].astype(float),
-        EmecField.magtype: ret['originalmagtype'].astype('category'),
+        EmecField.magtype: ret['originalmagtype'].fillna('').astype('category'),
         EmecField.depth: ret[EmecField.depth].astype(float),
         EmecField.iscid: ret[EmecField.iscid].fillna(0).astype(int)
     })
 
     if save:
-        emec_df.to_hdf(
-            join(dirname(__file__), FILENAME + '.hdf'), key='emec', format='table'
-        )
-    return ret
+        emec_df.to_hdf(file_path, key='emec', format='table')
+    return emec_df
 
 
 if __name__ == "__main__":
-    read_emec('https://datapub.gfz-potsdam.de/download/'
-              '10.5880.GFZ.EMEC.2021.001-Lewfnu/EMEC-2021.zip')
+    ret = get_source_catalog(SOURCE_URL, save=True)
+    print(f'Emec has {len(ret)} events')
+    for c in ret.columns:
+        print(f'{c}: {ret[c].dtype}: {ret[c].isna().sum()} na(s)')
 
+    print(len(pd.unique(ret[EmecField.iscid])))
     # ret = pd.read_hdf('/Users/rizac/work/gfz/projects/sources/python/emec_2021_restful_api/emec_2021_restful_api/emec_2021/EMEC-2021_events.hdf')
     # def to_datetime(v):
     #     return datetime.fromtimestamp(v).isoformat()

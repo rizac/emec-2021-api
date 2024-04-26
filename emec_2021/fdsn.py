@@ -4,7 +4,8 @@ utilities for FDSN queries
 """
 from datetime import datetime
 from enum import Enum
-from io import StringIO
+from io import BytesIO
+from typing import Any
 
 import pandas as pd
 from obspy import Catalog, UTCDateTime
@@ -20,8 +21,8 @@ class Param(Enum):
     one. If the param has no alias, map the param name to itself.
     (https://www.fdsn.org/webservices/fdsnws-event-1.2.pdf)
     """
-    maxlat = 'maxlatitude'
     minlat = 'minlatitude'
+    maxlat = 'maxlatitude'
     minlon = 'minlongitude'
     maxlon = 'maxlongitude'
     minmag = 'minmagnitude'
@@ -36,15 +37,8 @@ class Param(Enum):
 
 
 def apply_query_param(
-        catalog: pd.DataFrame, param: str, value: str, strict_check=True
+        catalog: pd.DataFrame, param: Param, value: Any, strict_check=True
 ) -> pd.DataFrame:
-    try:
-        param, value = validate_param(param, value)
-    except ValueError as err:
-        if not strict_check:
-            return catalog
-        raise err from None
-
     # https://www.fdsn.org/webservices/fdsnws-event-1.2.pdf
     if param == Param.start:
         return catalog[catalog[EmecField.time] >= value]
@@ -91,69 +85,82 @@ def validate_param(param: str, value: str) -> tuple:  # tuple[Param, Any]
         # time-asc: order by origin ascending time
         # magnitude: order by descending magnitude
         # magnitude-asc: order by ascending magnitude
-        order_by = str(value)
-        ascending = False
-        if order_by.endswith("-asc"):
-            order_by = value[:-4]
-            ascending = True
-        if order_by not in (EmecField.time, EmecField.mag):
-            raise ValueError(f'Invalid value for orderby: {order_by}')
-        return col, (order_by, ascending)
+        try:
+            (order_by, ascending) = {
+                'time': (EmecField.time, False),
+                'time-asc': (EmecField.time, True),
+                'magnitude': (EmecField.mag, False),
+                'magnitude-asc': (EmecField.mag, True)
+            }[str(value)]
+            return col, (order_by, ascending)
+        except KeyError:
+            raise ValueError(f'Invalid value for orderby: {str(value)}')
     if col == Param.format:
-        value = str(value)
         if value not in ('text', 'xml'):
             raise ValueError(f'Invalid value for format: {str(value)}')
         return col, value
     return col, float(value)
 
 
-def to_text(catalog: pd.DataFrame) -> StringIO:
-    s = StringIO()
-    s.write('#EventID|Time|Latitude|Longitude|Depth/km|Author|Catalog|Contributor|'
-            'ContributorID|MagType|Magnitude|MagAuthor|EventLocationName|EventType')
-    iterator = zip(
-        catalog[EmecField.eventid],
-        catalog[EmecField.time],
-        catalog[EmecField.lat],
-        catalog[EmecField.lon],
-        catalog[EmecField.depth],
-        catalog[EmecField.mag],
-        catalog[EmecField.magtype],
-        catalog[EmecField.iscid],
-    )
+def to_text(catalog: pd.DataFrame) -> BytesIO:
+    b = BytesIO()
+    b.write(('#EventID|Time|Latitude|Longitude|Depth/km|Author|Catalog|Contributor|'
+             'ContributorID|MagType|Magnitude|MagAuthor|EventLocationName|EventType')
+            .encode('utf8'))
+    iterator = catalog_iterator(catalog, na_repr='')
     for ev_id, timestamp, lat, lon, depth, mag, magtype, isc_id in iterator:
         c = 'ISC' if isc_id > 0 else ''
         cid = isc_id if isc_id > 0 else ''
-        s.write(f'\n{ev_id}|{datetime.fromtimestamp(timestamp).isoformat()}|'
+        dtime = '' if not timestamp else datetime.fromtimestamp(timestamp).isoformat()
+        b.write(f'\n{ev_id}|{dtime}|'
                 f'{lat}|{lon}|{depth}||EMEC-2021|{c}|{cid}|{magtype}|{mag}|||'
-                f'earthquake')
-    s.seek(0)
-    return s
+                f'earthquake'.encode('utf8'))
+    b.seek(0)
+    return b
 
 
-def to_xml(catalog: pd.DataFrame) -> StringIO:
+def to_xml(catalog: pd.DataFrame) -> BytesIO:
     events = []
-    iterator = zip(
-        catalog[EmecField.eventid],
-        catalog[EmecField.time],
-        catalog[EmecField.lat],
-        catalog[EmecField.lon],
-        catalog[EmecField.depth],
-        catalog[EmecField.mag],
-        catalog[EmecField.magtype],
-        catalog[EmecField.iscid],
-    )
+    iterator = catalog_iterator(catalog, na_repr=None)
+
     for ev_id, timestamp, lat, lon, depth, mag, magtype, isc_id in iterator:
-        time = UTCDateTime(datetime.fromtimestamp(timestamp))
+        time = None if timestamp is None else \
+            UTCDateTime(datetime.fromtimestamp(timestamp))
         evt_params = {
-            'resource_id': resourceid.ResourceIdentifier(ev_id, prefix="smi:EMEC-2021")
-            'origins': [Origin(latitude=lat, longitude=lon, depth=depth, time=time)],
-            'magnitudes': [Magnitude(mag=mag, magnitude_type=magtype)]
+            'resource_id': rid(ev_id),
+            'origins': [Origin(latitude=lat, longitude=lon, depth=depth, time=time,
+                               resource_id=rid(f'origin/{ev_id}'))],
+            'magnitudes': [Magnitude(mag=mag, magnitude_type=magtype,
+                                     resource_id=rid(f'magnitude/{ev_id}'))]
         }
         if isc_id > 0:
             evt_params['creation_info'] = base.CreationInfo(author='ISC')
         events.append(Event(**evt_params))
-    s = StringIO()
-    Catalog(events).write(s, format="QUAKEML")
-    s.seek(0)
-    return s
+    bio = BytesIO()
+    Catalog(events, resource_id=rid()).write(bio, format="QUAKEML")  # noqa
+    bio.seek(0)
+    return bio
+
+
+def rid(resid=None):
+    _id = 'EMEC-2021' if resid is None else f'EMEC-2021/{resid}'
+    return resourceid.ResourceIdentifier(_id).get_quakeml_id('org.gfz-potsdam.de')
+
+
+def catalog_iterator(catalog: pd.DataFrame, na_repr=None):
+    columns = [
+        EmecField.eventid,
+        EmecField.time,
+        EmecField.lat,
+        EmecField.lon,
+        EmecField.depth,
+        EmecField.mag,
+        EmecField.magtype,
+        EmecField.iscid,
+    ]
+    nan_values = pd.isna(catalog[columns]).values
+    row_is_nan = nan_values.any(axis=1)
+    for i, data in enumerate(zip(*[catalog[c] for c in columns])):
+        if row_is_nan[i]:
+            data = [na_repr if nan_values[i][j] else d for j, d in enumerate(data)]
+        yield data
