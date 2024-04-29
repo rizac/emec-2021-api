@@ -22,8 +22,11 @@ class TestFdsn(unittest.TestCase):
         # self.assertEqual(True, False)  # add assertion here
 
     def test_to_xml(self):
-        s = to_xml(self.catalog.iloc[:1]).getvalue().decode('utf8')
+        cat = self.catalog[self.catalog[EmecField.iscid] > 0]
+        s = to_xml(cat.iloc[:1]).getvalue().decode('utf8')
         asd = 9
+        with open('/Users/rizac/work/gfz/projects/sources/python/emec_2021_restful_api/example.xml', 'wt') as _:
+            _.write(s)
         # self.assertEqual(True, False)  # add assertion here
 
 

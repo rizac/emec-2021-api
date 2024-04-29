@@ -1,0 +1,28 @@
+<event publicID="smi:org.gfz-potsdam.de/EMEC-2021/{{ event.id }}">
+  {-% if event.isc_id > 0 -%}
+  <creationInfo>
+    <agencyID>ISC</agencyID>
+    <agencyURI>smi:www.isc.ac.uk/fdsnws/event/1/query?eventid={{ event.isc_id }}</agencyURI>
+  </creationInfo>
+  {-% endif -%}
+  <origin publicID="smi:org.gfz-potsdam.de/EMEC-2021/origin/{{ event.id }}">
+    <time>
+      <value>{{ event.time }}</value>
+    </time>
+    <latitude>
+      <value>{{ event.lon }}</value>
+    </latitude>
+    <longitude>
+      <value>{{ event.lat }}</value>
+    </longitude>
+    <depth>
+      <value>{{ event.depth }}</value>
+    </depth>
+  </origin>
+  <magnitude publicID="smi:org.gfz-potsdam.de/EMEC-2021/magnitude/{{ event.id }}">
+    <mag>
+      <value>{{ event.mag }}</value>
+    </mag>
+    <type>{{ event.magtype }}</type>
+  </magnitude>
+</event>
