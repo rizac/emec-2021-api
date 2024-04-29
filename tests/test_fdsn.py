@@ -1,13 +1,13 @@
 import unittest
 
 import pandas as pd
-from emec_2021.emec import get_source_catalog, SOURCE_URL, EmecField
+from emec_2021.emec import create_catalog, EmecField
 from emec_2021.fdsn import to_text, to_xml
 
 
 class TestFdsn(unittest.TestCase):
 
-    catalog = get_source_catalog(SOURCE_URL)
+    catalog = create_catalog()
 
     def test_catalog(self):
         assert pd.isna(self.catalog[EmecField.depth]).any()
@@ -15,7 +15,6 @@ class TestFdsn(unittest.TestCase):
         cols = [c for c in self.catalog.columns if c not in
                 (EmecField.depth, EmecField.mag)]
         assert pd.notna(self.catalog[cols]).all().all()
-
 
     def test_to_text(self):
         s = to_text(self.catalog.iloc[:1]).getvalue().decode('utf8')

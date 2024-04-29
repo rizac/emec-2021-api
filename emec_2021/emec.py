@@ -2,14 +2,15 @@ import urllib.request
 import zipfile
 from datetime import datetime, timedelta, MINYEAR
 from io import BytesIO
-from os.path import dirname, join, isfile
+from os.path import dirname, join, isfile, splitext, basename
 
 import pandas as pd
 
-FILENAME = 'EMEC-2021_events'
 
 SOURCE_URL = ('https://datapub.gfz-potsdam.de/download/'
               '10.5880.GFZ.EMEC.2021.001-Lewfnu/EMEC-2021.zip')
+
+SOURCE_FILENAME = 'EMEC-2021_events.csv'
 
 
 class EmecField:
@@ -24,16 +25,21 @@ class EmecField:
     iscid = 'isc_id'
 
 
-def get_source_catalog(url, save=True) -> pd.DataFrame:
-    file_path = join(dirname(__file__), FILENAME + '.hdf')
+def create_catalog(
+        src_url=SOURCE_URL, src_filename=SOURCE_FILENAME, verbose=False
+) -> pd.DataFrame:
 
-    if isfile(file_path):
-        return pd.read_hdf(file_path)  # noqa
+    dest_path = join(dirname(__file__), splitext(src_filename)[0] + '.hdf')
 
-    with urllib.request.urlopen(url) as _:
-        zip_file = zipfile.ZipFile(BytesIO(_.read()))
-    ret = pd.read_csv(zip_file.open(FILENAME + '.csv'))
-    zip_file.close()
+    if isfile(dest_path):
+        return pd.read_hdf(dest_path)  # noqa
+
+    if verbose:
+        print(f'Reading {src_filename} from {src_url}')
+    ret = get_source_catalog(src_url, src_filename)
+
+    if verbose:
+        print(f'Processing catalog')
 
     # convert columns:
 
@@ -69,18 +75,40 @@ def get_source_catalog(url, save=True) -> pd.DataFrame:
         EmecField.iscid: ret[EmecField.iscid].fillna(0).astype(int)
     })
 
-    if save:
-        emec_df.to_hdf(file_path, key='emec', format='table')
+    emec_df.to_hdf(dest_path, key='emec', format='table')
+
+    if verbose:
+        print(f'Saved {basename(dest_path)} to {dirname(dest_path)}')
+        print(f'(Events: {len(emec_df)}, Fields: {len(emec_df.columns)})')
+        _data = []
+        for c in emec_df.columns:
+            dtype = emec_df[c].dtype
+            if len(getattr(dtype, 'categories', [])):
+                dtype = (f'{dtype.categories.dtype} '
+                         f'({len(dtype.categories)} categories)')
+            else:
+                dtype = str(dtype)
+            _data.append({'Field': c, 'dtype': str(dtype), 'Null/NaNs': emec_df[c].isna().sum()})
+        print(pd.DataFrame(_data).to_string(index=False))
+
     return emec_df
 
 
-if __name__ == "__main__":
-    ret = get_source_catalog(SOURCE_URL, save=True)
-    print(f'Emec has {len(ret)} events')
-    for c in ret.columns:
-        print(f'{c}: {ret[c].dtype}: {ret[c].isna().sum()} na(s)')
+def get_source_catalog(src_url=SOURCE_URL, src_filename=SOURCE_FILENAME) -> pd.DataFrame:
+    with urllib.request.urlopen(src_url) as _:
+        zip_file = zipfile.ZipFile(BytesIO(_.read()))
+    ret = pd.read_csv(zip_file.open(src_filename))
+    zip_file.close()
+    return ret
 
-    print(len(pd.unique(ret[EmecField.iscid])))
+
+if __name__ == "__main__":
+    ret = create_catalog(verbose=True)
+    # print(f'Emec has {len(ret)} events')
+    # for c in ret.columns:
+    #     print(f'{c}: {ret[c].dtype}: {ret[c].isna().sum()} na(s)')
+    #
+    # print(len(pd.unique(ret[EmecField.iscid])))
     # ret = pd.read_hdf('/Users/rizac/work/gfz/projects/sources/python/emec_2021_restful_api/emec_2021_restful_api/emec_2021/EMEC-2021_events.hdf')
     # def to_datetime(v):
     #     return datetime.fromtimestamp(v).isoformat()

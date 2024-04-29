@@ -1,19 +1,19 @@
 from flask import Flask, request, send_file
 import pandas as pd
 
-from emec_2021.emec import get_source_catalog, SOURCE_URL
+from emec_2021.emec import create_catalog
 from emec_2021.fdsn import apply_query_param, to_xml, to_text, validate_param, Param
 
 app = Flask(__name__)
 
 
-_catalog: pd.DataFrame = None  # noqa
+_catalog: pd.DataFrame = get_catalog()  # noqa
 
 
 def get_catalog():
     global _catalog
     if _catalog is None:
-        _catalog = get_source_catalog(url=SOURCE_URL, save=False)
+        _catalog = create_catalog()
     return _catalog
 
 
