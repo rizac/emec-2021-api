@@ -134,7 +134,10 @@ def to_xml(catalog: pd.DataFrame) -> BytesIO:
                                      resource_id=rid(f'magnitude/{ev_id}'))]
         }
         if isc_id > 0:
-            evt_params['creation_info'] = base.CreationInfo(author='ISC')
+            evt_params['creation_info'] = base.CreationInfo(
+                agency_id='ISC',
+                agency_uri=f'smi:www.isc.ac.uk/fdsnws/event/1/query?eventid={isc_id}'
+            )
         events.append(Event(**evt_params))
     bio = BytesIO()
     Catalog(events, resource_id=rid()).write(bio, format="QUAKEML")  # noqa
