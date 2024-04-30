@@ -103,34 +103,4 @@ def get_source_catalog(src_url=SOURCE_URL, src_filename=SOURCE_FILENAME) -> pd.D
 
 
 if __name__ == "__main__":
-    ret = create_catalog(verbose=True)
-    # print(f'Emec has {len(ret)} events')
-    # for c in ret.columns:
-    #     print(f'{c}: {ret[c].dtype}: {ret[c].isna().sum()} na(s)')
-    #
-    # print(len(pd.unique(ret[EmecField.iscid])))
-    # ret = pd.read_hdf('/Users/rizac/work/gfz/projects/sources/python/emec_2021_restful_api/emec_2021_restful_api/emec_2021/EMEC-2021_events.hdf')
-    # def to_datetime(v):
-    #     return datetime.fromtimestamp(v).isoformat()
-    #
-    # ret['time'] = ret['time'].apply(to_datetime)
-    #
-    # ret.to_hdf(join(dirname(__file__), FILENAME + '.hdf2'), key='emec',
-    #            format='table')
-
-    # ret1 = pd.read_hdf(
-    #     '/Users/rizac/work/gfz/projects/sources/python/emec_2021_restful_api/emec_2021_restful_api/emec_2021/EMEC-2021_events.hdf')
-    # ret2 = pd.read_hdf(
-    #     '/Users/rizac/work/gfz/projects/sources/python/emec_2021_restful_api/emec_2021_restful_api/emec_2021/EMEC-2021_events.hdf2')
-    #
-    # print(ret1['time'].memory_usage(deep=True))
-    # print(ret2['time'].memory_usage(deep=True))
-    #
-    # ret2['time'] = ret2['time'].astype("S19")
-    # assert (ret2['time'] == b'1003-01-01T00:00:00').any()
-    #
-    # b = BytesIO()
-    # ret2.to_csv(b)
-    # bb = b.getvalue()
-    # print(tmp2.memory_usage(deep=True))
-    # asd = 8
+    create_catalog(verbose=True)
