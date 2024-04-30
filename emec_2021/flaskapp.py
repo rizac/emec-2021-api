@@ -7,7 +7,7 @@ from emec_2021.fdsn import apply_query_param, to_xml, to_text, validate_param, P
 app = Flask('emec-2021-api')
 
 
-_catalog: pd.DataFrame = get_catalog()  # noqa
+_catalog: pd.DataFrame = None  # noqa
 
 
 def get_catalog():
@@ -40,5 +40,5 @@ def get_events():
         return str(exc), 500
 
 
-# if __name__ == "__main__":
-#     app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
