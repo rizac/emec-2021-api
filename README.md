@@ -1,6 +1,5 @@
 # emec_2021_restful_api
 
-
 Deploy instructions
 
 Got to /www/data (or whatever directory):

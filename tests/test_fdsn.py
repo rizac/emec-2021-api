@@ -10,11 +10,10 @@ class TestFdsn(unittest.TestCase):
     catalog = create_catalog()
 
     def test_catalog(self):
-        assert pd.isna(self.catalog[EmecField.depth]).any()
-        assert pd.isna(self.catalog[EmecField.mag]).any()
-        cols = [c for c in self.catalog.columns if c not in
-                (EmecField.depth, EmecField.mag)]
-        assert pd.notna(self.catalog[cols]).all().all()
+        fields_with_na = {EmecField.depth, EmecField.mag}
+        for col in self.catalog.columns:
+            has_na = pd.isna(self.catalog[col]).any()
+            assert has_na == (col in fields_with_na)
 
     def test_to_text(self):
         s = to_text(self.catalog.iloc[:1]).getvalue().decode('utf8')
@@ -23,7 +22,6 @@ class TestFdsn(unittest.TestCase):
 
     def test_to_xml(self):
         s = to_xml(self.catalog.iloc[:1]).getvalue().decode('utf8')
-        asd = 9
         # self.assertEqual(True, False)  # add assertion here
 
 

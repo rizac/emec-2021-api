@@ -1,15 +1,16 @@
 import urllib.request
 import zipfile
-from datetime import datetime, timedelta, MINYEAR
+from datetime import datetime, timedelta
 from io import BytesIO
 from os.path import dirname, join, isfile, splitext, basename
 
 import pandas as pd
 
-
+# the default EMEC 2021 source URL (zip file)
 SOURCE_URL = ('https://datapub.gfz-potsdam.de/download/'
               '10.5880.GFZ.EMEC.2021.001-Lewfnu/EMEC-2021.zip')
 
+# the default EMEC 2021 file name within the zip file pointed by SOURCE_URL
 SOURCE_FILENAME = 'EMEC-2021_events.csv'
 
 
@@ -28,7 +29,20 @@ class EmecField:
 def create_catalog(
         src_url=SOURCE_URL, src_filename=SOURCE_FILENAME, verbose=False
 ) -> pd.DataFrame:
+    """
+    Create and return the EMEC 2021 catalog as pandas DataFrame.
+    This is the same catalog returned by ``get_source_catalog`` with some
+    post-processing in order to harmonize and correct data.
+    Note that the catalog will be saved under this directory and same base name as
+    `src_filename`. If such a file already exist, the returned catalog will be
+    read from the local file without HTTP requests
 
+    @param src_url: the source catalog URL (zip file). Ignored if the catalog
+        is stored locally
+    @param src_filename: the source catalog file name within the zip
+        file pointed by `src_url`. Ignored if the catalog is stored locally
+    @param verbose: whether to print info (default: False)
+    """
     dest_path = join(dirname(__file__), splitext(src_filename)[0] + '.hdf')
 
     if isfile(dest_path):
@@ -44,7 +58,7 @@ def create_catalog(
     # convert columns:
 
     # Date times: pandas to_datetime is limited to ~= 580 years
-    # (https://stackoverflow.com/a/69507200), so cionvert to datetime.timestamp using
+    # (https://stackoverflow.com/a/69507200), so convert to datetime.timestamp using
     # apply:
     def to_datetime(series):
         y, mo, d, s = series.tolist()
@@ -95,6 +109,13 @@ def create_catalog(
 
 
 def get_source_catalog(src_url=SOURCE_URL, src_filename=SOURCE_FILENAME) -> pd.DataFrame:
+    """
+    Return the EMEC 2021 source catalog as pandas DataFrame
+
+    @param src_url: the source catalog URL (zip file)
+    @param src_filename: the source catalog file name within the zip
+        file pointed by `src_url`
+    """
     with urllib.request.urlopen(src_url) as _:
         zip_file = zipfile.ZipFile(BytesIO(_.read()))
     ret = pd.read_csv(zip_file.open(src_filename))

@@ -1,5 +1,5 @@
 """
-utilities for FDSN queries
+Utilities for FDSN queries
 (https://www.fdsn.org/webservices/fdsnws-event-1.2.pdf)
 """
 from datetime import datetime
@@ -17,9 +17,9 @@ from emec_2021.emec import EmecField
 
 class Param(Enum):
     """
-    FDSN required query params. Name should be the short name, value the verbose
-    one. If the param has no alias, map the param name to itself.
-    (https://www.fdsn.org/webservices/fdsnws-event-1.2.pdf)
+    The FDSN query params supported by this application. Name should be the short name,
+    value the verbose one (if the param has no alias, map the param name to itself.
+    For details check https://www.fdsn.org/webservices/fdsnws-event-1.2.pdf)
     """
     minlat = 'minlatitude'
     maxlat = 'maxlatitude'
@@ -33,12 +33,23 @@ class Param(Enum):
     start = 'starttime'
     end = 'endtime'
     orderby = 'orderby'
-    format='format'
+    format = 'format'
 
 
 def apply_query_param(
         catalog: pd.DataFrame, param: Param, value: Any, strict_check=True
 ) -> pd.DataFrame:
+    """
+    Apply the query parameter to the given catalog, returning a new catalog
+    with matching rows only
+
+    @param catalog: the EMEC 2021 catalog as pandas DataFrame
+    @param param: an instance of the enum `Param` representing a query parameter
+        (e.g. `Param.minmag`)
+    @param value: the value associated to the given param as float, datetime, bool, int
+        or string. (e.g. if `param` is `Param.start`, then `value` is a datetime
+        object representing the minimum date of the requested events)
+    """
     # https://www.fdsn.org/webservices/fdsnws-event-1.2.pdf
     if param == Param.start:
         return catalog[catalog[EmecField.time] >= value]
@@ -67,6 +78,19 @@ def apply_query_param(
 
 
 def validate_param(param: str, value: str) -> tuple:  # tuple[Param, Any]
+    """
+    Validate the given `param` and its value. Raise ValueError is the param or
+    its value can not be cast properly
+
+    @param param: a string denoting a name or a value of a `Param` enum instance
+        (e.g. "minmag", "minmagnitude")
+    @param value: the value associated to the given param as string
+
+    :return: the tuple `(p, v)` where p is a `Param` enum
+        instance and `v` is value cast as datetime, bool, int, float or str
+        depending on `p`
+    """
+    # https://www.fdsn.org/webservices/fdsnws-event-1.2.pdf
     try:
         col = Param(param)
     except ValueError:
@@ -103,6 +127,9 @@ def validate_param(param: str, value: str) -> tuple:  # tuple[Param, Any]
 
 
 def to_text(catalog: pd.DataFrame) -> BytesIO:
+    """
+    Return the catalog in FDSN text format in a file-like object (`BytesIO`)
+    """
     b = BytesIO()
     b.write(('#EventID|Time|Latitude|Longitude|Depth/km|Author|Catalog|Contributor|'
              'ContributorID|MagType|Magnitude|MagAuthor|EventLocationName|EventType')
@@ -120,12 +147,16 @@ def to_text(catalog: pd.DataFrame) -> BytesIO:
 
 
 def to_xml(catalog: pd.DataFrame) -> BytesIO:
+    """
+    Return the catalog in QuakeML format in a file-like object (`BytesIO`)
+    """
     events = []
     iterator = catalog_iterator(catalog, na_repr=None)
 
     for ev_id, timestamp, lat, lon, depth, mag, magtype, isc_id in iterator:
-        time = None if timestamp is None else \
-            UTCDateTime(datetime.fromtimestamp(timestamp))
+        time = None
+        if timestamp is not None:
+            time = UTCDateTime(datetime.fromtimestamp(timestamp))
         evt_params = {
             'resource_id': rid(ev_id),
             'origins': [Origin(latitude=lat, longitude=lon, depth=depth, time=time,
@@ -151,6 +182,11 @@ def rid(resid=None):
 
 
 def catalog_iterator(catalog: pd.DataFrame, na_repr=None):
+    """EMEC catalog row iterator, returning the row field values in this order:
+    `(event_id, time, lat, lon, depth, mad, magtype, isc_id)`
+
+    :param na_repr: the value to be given to NA values (NaNs, Nulls). Defaults to None
+    """
     columns = [
         EmecField.eventid,
         EmecField.time,

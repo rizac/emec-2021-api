@@ -1,6 +1,6 @@
 from emec_2021.flaskapp import app
 
-# we assume the app is run behind a proxy
+# we assume the app is run with gunicorn behind a proxy
 # (https://flask.palletsprojects.com/en/3.0.x/deploying/proxy_fix/):
 from werkzeug.middleware.proxy_fix import ProxyFix
 
