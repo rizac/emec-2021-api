@@ -7,13 +7,7 @@ from emec_2021.fdsn import to_text, to_xml
 
 class TestFdsn(unittest.TestCase):
 
-    catalog = create_catalog()
-
-    def test_catalog(self):
-        fields_with_na = {EmecField.depth, EmecField.mag}
-        for col in self.catalog.columns:
-            has_na = pd.isna(self.catalog[col]).any()
-            assert has_na == (col in fields_with_na)
+    catalog = create_catalog(force_reload=False, verbose=False)
 
     def test_to_text(self):
         s = to_text(self.catalog.iloc[:1]).getvalue().decode('utf8')

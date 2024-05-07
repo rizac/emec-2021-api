@@ -1,10 +1,12 @@
 import urllib.request
 import zipfile
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from io import BytesIO
 from os.path import dirname, join, isfile, splitext, basename
 
 import pandas as pd
+from werkzeug.utils import secure_filename
 
 # the default EMEC 2021 source URL (zip file)
 SOURCE_URL = ('https://datapub.gfz-potsdam.de/download/'
@@ -12,6 +14,9 @@ SOURCE_URL = ('https://datapub.gfz-potsdam.de/download/'
 
 # the default EMEC 2021 file name within the zip file pointed by SOURCE_URL
 SOURCE_FILENAME = 'EMEC-2021_events.csv'
+
+# the default destination directory for the catalog file(s) (this dir by default)
+DEST_PATH = dirname(__file__)
 
 
 class EmecField:
@@ -26,9 +31,7 @@ class EmecField:
     iscid = 'isc_id'
 
 
-def create_catalog(
-        src_url=SOURCE_URL, src_filename=SOURCE_FILENAME, verbose=False
-) -> pd.DataFrame:
+def create_catalog(force_reload=False, verbose=False) -> pd.DataFrame:
     """
     Create and return the EMEC 2021 catalog as pandas DataFrame.
     This is the same catalog returned by ``get_source_catalog`` with some
@@ -37,58 +40,33 @@ def create_catalog(
     `src_filename`. If such a file already exist, the returned catalog will be
     read from the local file without HTTP requests
 
-    @param src_url: the source catalog URL (zip file). Ignored if the catalog
-        is stored locally
-    @param src_filename: the source catalog file name within the zip
-        file pointed by `src_url`. Ignored if the catalog is stored locally
+    @param force_reload: if True (default False): will force a full reload from the
+        remote URL, overwriting all local files
     @param verbose: whether to print info (default: False)
     """
-    dest_path = join(dirname(__file__), splitext(src_filename)[0] + '.hdf')
+    src_filename = SOURCE_FILENAME
+    dest_path = join(DEST_PATH, splitext(src_filename)[0] + '.hdf')
 
-    if isfile(dest_path):
+    if not force_reload and isfile(dest_path):
         return pd.read_hdf(dest_path)  # noqa
 
+    src_url = SOURCE_URL
+    src_path = join(DEST_PATH, src_filename)
+    if force_reload or not isfile(src_path):
+        if verbose:
+            print(f'Fetching {src_filename} from {src_url}')
+        with open_source_catalog(src_url, src_filename) as _src:
+            with open(src_path, 'wb') as _dest:
+                _dest.write(_src.read())
+
     if verbose:
-        print(f'Reading {src_filename} from {src_url}')
-    ret = get_source_catalog(src_url, src_filename)
+        print(f'Reading {src_filename} from {dirname(src_path)}')
+    ret = pd.read_csv(src_path)
 
     if verbose:
         print(f'Processing catalog')
 
-    # convert columns:
-
-    # Date times: pandas to_datetime is limited to ~= 580 years
-    # (https://stackoverflow.com/a/69507200), so convert to datetime.timestamp using
-    # apply:
-    def to_datetime(series):
-        y, mo, d, s = series.tolist()
-        # sometimes s=60, and consequently we should increase min, and hours, and so on
-        # delegate python for that via timedelta:
-        return (datetime(y, mo, d) + timedelta(seconds=s)).timestamp()
-
-    dtime_cols = ['year', 'month', 'day', 'hour', 'minute', 'second']
-    dtime_df = ret[dtime_cols].fillna(0).astype(int)
-    # fix missing month/day and month day = 0: take 1 in both cases:
-    dtime_df.loc[pd.isna(dtime_df['month']) == 0, 'month'] = 1
-    dtime_df.loc[pd.isna(dtime_df['day']) == 0, 'day'] = 1
-    # fix second=60 by providing a "total second" column (handled in to_datetime above):
-    dtime_df['second'] = (
-        dtime_df['hour'] * 3600 + dtime_df['minute'] * 60 + dtime_df['second']
-    )
-    dtime_df.drop(columns=['hour', 'minute'], inplace=True)
-
-    # other columns:
-    emec_df = pd.DataFrame({
-        EmecField.eventid: ret[EmecField.eventid].astype(int),
-        EmecField.time: dtime_df.apply(to_datetime, axis='columns'),
-        EmecField.lat: ret[EmecField.lat].astype(float),
-        EmecField.lon: ret[EmecField.lon].astype(float),
-        EmecField.mag: ret['originalmag'].astype(float),
-        EmecField.magtype: ret['originalmagtype'].fillna('').astype('category'),
-        EmecField.depth: ret[EmecField.depth].astype(float),
-        EmecField.iscid: ret[EmecField.iscid].fillna(0).astype(int)
-    })
-
+    emec_df = process_source_catalog(ret)
     emec_df.to_hdf(dest_path, key='emec', format='table')
 
     if verbose:
@@ -108,7 +86,8 @@ def create_catalog(
     return emec_df
 
 
-def get_source_catalog(src_url=SOURCE_URL, src_filename=SOURCE_FILENAME) -> pd.DataFrame:
+@contextmanager
+def open_source_catalog(src_url=SOURCE_URL, src_filename=SOURCE_FILENAME):
     """
     Return the EMEC 2021 source catalog as pandas DataFrame
 
@@ -118,10 +97,48 @@ def get_source_catalog(src_url=SOURCE_URL, src_filename=SOURCE_FILENAME) -> pd.D
     """
     with urllib.request.urlopen(src_url) as _:
         zip_file = zipfile.ZipFile(BytesIO(_.read()))
-    ret = pd.read_csv(zip_file.open(src_filename))
+    yield zip_file.open(src_filename)
     zip_file.close()
-    return ret
+
+
+def process_source_catalog(src_catalog: pd.DataFrame) -> pd.DataFrame:
+    """
+    Process the given soruce catalog into a catalog to be used within this app
+    """
+    ret = src_catalog
+
+    # Date times: pandas to_datetime is limited to ~= 580 years
+    # (https://stackoverflow.com/a/69507200), so convert to datetime.timestamp using
+    # apply. First define function to be applied:
+    def to_datetime(series):
+        y, mo, d, s = series.tolist()
+        # sometimes s=60, and consequently we should increase min, and hours, and so on
+        # delegate python for that via timedelta:
+        return (datetime(y, mo, d) + timedelta(seconds=s)).timestamp()
+    # and then apply the function:
+    dtime_cols = ['year', 'month', 'day', 'hour', 'minute', 'second']
+    dtime_df = ret[dtime_cols].fillna(0).astype(int)
+    # fix month or day = 0 and set to 1 in both cases:
+    dtime_df.loc[dtime_df['month'] == 0, 'month'] = 1
+    dtime_df.loc[dtime_df['day'] == 0, 'day'] = 1
+    # fix second=60 by providing a "total second" column (handled in to_datetime above):
+    dtime_df['second'] = (
+        dtime_df['hour'] * 3600 + dtime_df['minute'] * 60 + dtime_df['second']
+    )
+    dtime_df.drop(columns=['hour', 'minute'], inplace=True)
+
+    # other columns:
+    return pd.DataFrame({
+        EmecField.eventid: ret[EmecField.eventid].astype(int),
+        EmecField.time: dtime_df.apply(to_datetime, axis='columns'),
+        EmecField.lat: ret[EmecField.lat].astype(float),
+        EmecField.lon: ret[EmecField.lon].astype(float),
+        EmecField.mag: ret['originalmag'].astype(float),
+        EmecField.magtype: ret['originalmagtype'].fillna('').astype('category'),
+        EmecField.depth: ret[EmecField.depth].astype(float),
+        EmecField.iscid: ret[EmecField.iscid].fillna(0).astype(int)
+    })
 
 
 if __name__ == "__main__":
-    create_catalog(verbose=True)
+    create_catalog(force_reload=True, verbose=True)

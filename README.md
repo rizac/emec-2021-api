@@ -124,9 +124,10 @@ Save this content inside `/etc/apache2/sites-available/emec-2021-api.conf`
 
 - **check** that all `LoadModule`s point to an existing path, in the example
   above `/usr/lib/apache2/modules/` 
-- The example above **works if no other site is enabled and configured**, in case
-  you will need to configure all other sites to skip 
- `[site_url]/fdsnws/event/1/query` 
+- **The example above works if no other site is enabled and configured. Because 
+  this is most likely not the case, then you will probably tell all other configured 
+  sites to skip all requests to `[site_url]/fdsnws/event/1/query`** 
+  (ProxyPass? WsgiScriptAlias? I did not investigate it)
 
 
 ### Test apache:
@@ -154,3 +155,16 @@ Ref: - https://www.brandcrock.com/how-to-fix-invalid-command-requestheader-in-th
 **References**
 
 - https://flask.palletsprojects.com/en/3.0.x/deploying/apache-httpd/
+
+
+## Maintenance
+
+To update the source code (bugfix, update catalog):
+
+ - `cd /var/www/emec-2021-api` (or wherever the source code is) and `git pull`
+ - If you want to update the catalog, **activate virtualenv** (see above) and then:
+   ```commandline
+   python emec_2021/emec.py
+   ```
+  - restart gunicorn (see above) 
+  - restart apache (see above)
