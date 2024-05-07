@@ -1,6 +1,19 @@
 # EMEC 2021 API
 
-Deploy instructions for production server (Gunicorn + Apache2)
+Deploy instructions for production server. 
+
+The goal is to configure Apache2 as 
+reverse proxy server forwarding 
+all requests to `[site_url]/fdsnws/event/1/query` to a Python
+Gunicorn server which serves the API data.
+
+**Important notes**
+
+  This documentation assumes that no other site is enabled and configured. Because 
+  this is most likely not the case, then you will probably tell all other configured 
+  sites to skip all requests to `[site_url]/fdsnws/event/1/query`
+  (ProxyPass? WsgiScriptAlias? I did not investigate it)
+
 
 ## Install package
 
@@ -58,7 +71,13 @@ sudo systemctl enable emec-2021-api
 
 ### (Re)start service:
 
-If the service is started, then kill all processes currently running:
+Service file modified? (otherwise skip this step. 
+You will be warned on the terminal later in any case, if needed):
+```commandline
+systemctl daemon-reload
+```
+
+Restart the service:
 ```commandline
 pkill -f /var/www/emec-2021-api; systemctl restart emec-2021-api
 ```
