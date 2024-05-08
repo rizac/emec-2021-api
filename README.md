@@ -3,11 +3,11 @@
 FDSN web API serving data of the
 [European-Mediterranean Earthquake Catalogue – Version 2021](https://gfzpublic.gfz-potsdam.de/pubman/item/item_5023147)
 
-This page covers the installation of the API in a production server.
-Apache2 will be configured as reverse proxy server forwarding 
-all requests to `[site_url]/fdsnws/event/1/query` to a Gunicorn server
-running in Python that will process and return the requested seismic events 
-in QuakeML or text format.
+This page covers the installation of the API in a production environment:
+- Install and configure a Gunicorn server (running in Python) providing the 
+  requested seismic events in QuakeML or text format.
+- Configure the main server (Apache2) as reverse proxy server forwarding 
+  all requests to `[site_url]/fdsnws/event/1/query` to Gunicorn
 
 **Important notes**
 
