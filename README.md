@@ -1,12 +1,12 @@
 # EMEC 2021 API
 
-FDSN web API serving data from the
+FDSN web API serving data of the
 [European-Mediterranean Earthquake Catalogue – Version 2021](https://gfzpublic.gfz-potsdam.de/pubman/item/item_5023147)
 
-This page covers the installation of the API in a production server with
-Apache2 configured as reverse proxy server forwarding 
-all requests to `[site_url]/fdsnws/event/1/query` to a Python
-Gunicorn server processing and returning the requested seismic events 
+This page covers the installation of the API in a production server.
+Apache2 will be configured as reverse proxy server forwarding 
+all requests to `[site_url]/fdsnws/event/1/query` to a Gunicorn server
+running in Python that will process and return the requested seismic events 
 in QuakeML or text format.
 
 **Important notes**
