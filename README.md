@@ -1,18 +1,19 @@
 # EMEC 2021 API
 
-Deploy instructions for production server. 
+FDSN web API serving data from the
+[European-Mediterranean Earthquake Catalogue – Version 2021](https://gfzpublic.gfz-potsdam.de/pubman/item/item_5023147)
 
-The goal is to configure Apache2 as 
-reverse proxy server forwarding 
+This page covers the installation of the API in a production server with
+Apache2 configured as reverse proxy server forwarding 
 all requests to `[site_url]/fdsnws/event/1/query` to a Python
-Gunicorn server which serves the API data.
+Gunicorn server processing and returning the requested seismic events 
+in QuakeML or text format.
 
 **Important notes**
 
-  This documentation assumes that no other site is enabled and configured. Because 
-  this is most likely not the case, then you will probably tell all other configured 
-  sites to skip all requests to `[site_url]/fdsnws/event/1/query`
-  (ProxyPass? WsgiScriptAlias? I did not investigate it)
+  We assume that no other site is enabled and configured on the server. 
+  Because this is most likely not the case, please check the notes in the
+  Apache configuration section of this document
 
 
 ## Install package
@@ -124,7 +125,7 @@ pkill gunicorn
   - https://docs.gunicorn.org/en/stable/run.html
 
 
-## Configure apache to forward requests to the Gunicorn server
+## Configure Apache to forward requests to the Gunicorn server
 
 Save this content inside `/etc/apache2/sites-available/emec-2021-api.conf`
 (see notes below):
@@ -144,10 +145,10 @@ Save this content inside `/etc/apache2/sites-available/emec-2021-api.conf`
 - **check** that all `LoadModule`s point to an existing path, in the example
   above `/usr/lib/apache2/modules/` 
 - **The example above works if no other site is enabled and configured. Because 
-  this is most likely not the case, then you will probably tell all other configured 
-  sites to skip all requests to `[site_url]/fdsnws/event/1/query`** 
-  (ProxyPass? WsgiScriptAlias? I did not investigate it)
-
+  this is most likely not the case, then you will probably put the 
+  instructions above (at least the first three lines of text) 
+  in your existing config, instead of creating a new
+  file**
 
 ### Test apache:
 
