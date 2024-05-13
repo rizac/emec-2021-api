@@ -3,17 +3,17 @@
 FDSN web API serving data of the
 [European-Mediterranean Earthquake Catalogue – Version 2021](https://gfzpublic.gfz-potsdam.de/pubman/item/item_5023147)
 
-This page covers the installation of the API in a production environment:
-- Install and configure a Gunicorn server (running in Python) providing the 
-  requested seismic events in QuakeML or text format.
-- Configure the main server (Apache2) as reverse proxy server forwarding 
-  all requests to `[site_url]/fdsnws/event/1/query` to Gunicorn
+In this document we will show how to install and run Gunicorn,
+a pure-Python HTTP server for WSGI applications that will serve the API data
+and then configure Apache to proxy pass specific url to gunicorn.
 
 **Important notes**
 
-  We assume that no other site is enabled and configured on the server. 
-  Because this is most likely not the case, please check the notes in the
-  Apache configuration section of this document
+  We assume that the hosting machine has already Apache installed. If Apache
+  has already some site enabled (e.g., the API data is intended to be served
+  at a specific sub-path of the server domain), you will probably need to edit 
+  existing Apache configs instead of creating a new one. Please check the 
+  notes in the Apache configuration section of this document
 
 
 ## Install package
@@ -31,10 +31,7 @@ pip install --upgrade pip setuptools && pip install -r ./requirements.txt && pip
 - You can clone the project everywhere you want, but if you do not choose
   `var/www` then you will need to modify all scripts in the examples below
 
-## Run Python server (gunicorn):
-
-Gunicorn is a pure-Python HTTP server for WSGI applications. We will first install
-and run Gunicorn and then configure apache to proxy pass specific url to gunicorn.
+## Gunicorn
 
 Let's run gunicorn as Unix service located at:
 
@@ -125,7 +122,7 @@ pkill gunicorn
   - https://docs.gunicorn.org/en/stable/run.html
 
 
-## Configure Apache to forward requests to the Gunicorn server
+## Apache
 
 Save this content inside `/etc/apache2/sites-available/emec-2021-api.conf`
 (see notes below):
