@@ -105,7 +105,8 @@ def process_source_catalog(src_catalog: pd.DataFrame) -> pd.DataFrame:
     """
     Process the given soruce catalog into a catalog to be used within this app
     """
-    ret = src_catalog
+    # filter out historic events (before 1900):
+    ret = src_catalog[src_catalog['year'] >= 1900].copy()
 
     # Date times: pandas to_datetime is limited to ~= 580 years
     # (https://stackoverflow.com/a/69507200), so convert to datetime.timestamp using
