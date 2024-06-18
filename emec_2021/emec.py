@@ -108,25 +108,24 @@ def process_source_catalog(src_catalog: pd.DataFrame) -> pd.DataFrame:
     # filter out historic events (before 1900):
     ret = src_catalog[src_catalog['year'] >= 1900].copy()
 
-    # Date times: pandas to_datetime is limited to ~= 580 years
-    # (https://stackoverflow.com/a/69507200), so convert to datetime.timestamp using
-    # apply. First define function to be applied:
+    # Handle datetime(s): pandas to_datetime is limited to ~= 580 years
+    # (https://stackoverflow.com/a/69507200), so use to datetime.timestamp(s) (float)
+    # First create a datetime dataframe:
+    dtime_df = ret[['year', 'month', 'day', 'second']].copy().fillna(0).astype(int)
+    # fix month or day = 0 and set to 1 in both cases:
+    dtime_df.loc[dtime_df['month'] == 0, 'month'] = 1
+    dtime_df.loc[dtime_df['day'] == 0, 'day'] = 1
+    # fix seconds = 60. The easiest way is to set a "total second" column:
+    h = ret['hour'].fillna(0).astype(int)
+    m = ret['minute'].fillna(0).astype(int)
+    dtime_df['second'] = (h * 3600 + m * 60 + dtime_df['second'])
+
+    # apply function converting the datetime dataframe to timestamps:
     def to_datetime(series):
         y, mo, d, s = series.tolist()
         # sometimes s=60, and consequently we should increase min, and hours, and so on
         # delegate python for that via timedelta:
         return (datetime(y, mo, d) + timedelta(seconds=s)).timestamp()
-    # and then apply the function:
-    dtime_cols = ['year', 'month', 'day', 'hour', 'minute', 'second']
-    dtime_df = ret[dtime_cols].fillna(0).astype(int)
-    # fix month or day = 0 and set to 1 in both cases:
-    dtime_df.loc[dtime_df['month'] == 0, 'month'] = 1
-    dtime_df.loc[dtime_df['day'] == 0, 'day'] = 1
-    # fix second=60 by providing a "total second" column (handled in to_datetime above):
-    dtime_df['second'] = (
-        dtime_df['hour'] * 3600 + dtime_df['minute'] * 60 + dtime_df['second']
-    )
-    dtime_df.drop(columns=['hour', 'minute'], inplace=True)
 
     # other columns:
     return pd.DataFrame({

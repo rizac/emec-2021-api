@@ -12,7 +12,9 @@ DEST_PATH = join(dirname(__file__), 'tmp')
 
 @contextmanager
 def mock_open_source_catalog(*a, **kw):
-    yield open(join(dirname(dirname(__file__)), 'emec_2021', SOURCE_FILENAME), 'rb')
+    _ = open(join(dirname(dirname(__file__)), 'emec_2021', SOURCE_FILENAME), 'rb')
+    yield _
+    _.close()
 
 
 class TestEmec(unittest.TestCase):
