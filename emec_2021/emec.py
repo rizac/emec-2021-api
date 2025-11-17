@@ -20,13 +20,16 @@ DEST_PATH = dirname(__file__)
 
 
 class EmecField:
-    """Enum displaying EMEC source data columns names"""
+    """Enum displaying EMEC catalog columns names. The catalog will be loaded from
+    SOURCE_URL (see above) and processed in this module"""
     eventid = 'event_id'
     time = 'time'  # is a unix timestamp (see below)
     lat = 'latitude'
     lon = 'longitude'
     mag = 'magnitude'
     magtype = 'magnitudetype'
+    originalmag = 'originalmag'
+    originalmagtype = 'originalmagtype'
     depth = 'depth'
     iscid = 'isc_id'
 
@@ -133,8 +136,10 @@ def process_source_catalog(src_catalog: pd.DataFrame) -> pd.DataFrame:
         EmecField.time: dtime_df.apply(to_datetime, axis='columns'),
         EmecField.lat: ret[EmecField.lat].astype(float),
         EmecField.lon: ret[EmecField.lon].astype(float),
-        EmecField.mag: ret['originalmag'].astype(float),
-        EmecField.magtype: ret['originalmagtype'].fillna('').astype('category'),
+        EmecField.mag: ret['mw'].astype(float),
+        EmecField.magtype: pd.Series(['Mw'] * len(ret), index=ret.index, dtype='category'),
+        EmecField.originalmag: ret['originalmag'].astype(float),
+        EmecField.originalmagtype: ret['originalmagtype'].fillna('').astype('category'),
         EmecField.depth: ret[EmecField.depth].astype(float),
         EmecField.iscid: ret[EmecField.iscid].fillna(0).astype(int)
     })

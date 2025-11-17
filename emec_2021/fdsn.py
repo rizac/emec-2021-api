@@ -135,7 +135,8 @@ def to_text(catalog: pd.DataFrame) -> BytesIO:
              'ContributorID|MagType|Magnitude|MagAuthor|EventLocationName|EventType')
             .encode('utf8'))
     iterator = catalog_iterator(catalog, na_repr='')
-    for ev_id, timestamp, lat, lon, depth, mag, magtype, isc_id in iterator:
+    for ev_id, timestamp, lat, lon, depth, mag, magtype, o_mag, o_magtype, isc_id \
+            in iterator:
         c = 'ISC' if isc_id > 0 else ''
         cid = isc_id if isc_id > 0 else ''
         dtime = '' if not timestamp else datetime.fromtimestamp(timestamp).isoformat()
@@ -153,7 +154,8 @@ def to_xml(catalog: pd.DataFrame) -> BytesIO:
     events = []
     iterator = catalog_iterator(catalog, na_repr=None)
 
-    for ev_id, timestamp, lat, lon, depth, mag, magtype, isc_id in iterator:
+    for ev_id, timestamp, lat, lon, depth, mag, magtype, o_mag, o_magtype, isc_id \
+            in iterator:
         time = None
         if timestamp is not None:
             time = UTCDateTime(datetime.fromtimestamp(timestamp))
@@ -161,8 +163,19 @@ def to_xml(catalog: pd.DataFrame) -> BytesIO:
             'resource_id': rid(ev_id),
             'origins': [Origin(latitude=lat, longitude=lon, depth=depth, time=time,
                                resource_id=rid(f'origin/{ev_id}'))],
-            'magnitudes': [Magnitude(mag=mag, magnitude_type=magtype,
-                                     resource_id=rid(f'magnitude/{ev_id}'))]
+            'magnitudes': [
+                Magnitude(
+                    mag=mag,
+                    magnitude_type=magtype,
+                    resource_id=rid(f'magnitude/{ev_id}')
+                ),
+                Magnitude(
+                    mag=o_mag,
+                    magnitude_type=o_magtype,
+                    resource_id=rid(f'original-magnitude/{ev_id}')
+                )
+
+            ]
         }
         if isc_id > 0:
             evt_params['creation_info'] = base.CreationInfo(
@@ -195,6 +208,8 @@ def catalog_iterator(catalog: pd.DataFrame, na_repr=None):
         EmecField.depth,
         EmecField.mag,
         EmecField.magtype,
+        EmecField.originalmag,
+        EmecField.originalmagtype,
         EmecField.iscid,
     ]
     nan_values = pd.isna(catalog[columns]).values

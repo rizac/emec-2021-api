@@ -33,7 +33,7 @@ class TestEmec(unittest.TestCase):
     @patch('emec_2021.emec.DEST_PATH', DEST_PATH)
     def test_catalog(self, mock_open_source_catalog):
         catalog = create_catalog(force_reload=True, verbose=False)
-        fields_with_na = {EmecField.depth, EmecField.mag}
+        fields_with_na = {EmecField.depth, EmecField.originalmag}
         for col in catalog.columns:
             has_na = pd.isna(catalog[col]).any()
             assert has_na == (col in fields_with_na)
