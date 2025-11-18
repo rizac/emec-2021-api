@@ -20,7 +20,9 @@ def get_catalog():
     return _catalog
 
 
-TIMEOUT_S = 25  # max execution time, after wich timeouterror is raised
+# max execution time, after which timeouterror is raised:
+# (must be lower than Python server (Gunicorn) timeout, which defaults to 30)
+TIMEOUT_S = 25
 
 
 @app.route("/", methods=['GET', 'POST'])
