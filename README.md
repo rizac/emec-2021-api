@@ -3,6 +3,8 @@
 FDSN web API serving data of the
 [European-Mediterranean Earthquake Catalogue – Version 2021](https://gfzpublic.gfz-potsdam.de/pubman/item/item_5023147)
 
+** NOTE: MAINTENANCE SECTION AT THE PAGE BOTTOM **
+
 In this document we will show how to install and run Gunicorn,
 a pure-Python HTTP server for WSGI applications that will serve the API data
 and then configure Apache to proxy pass specific url to gunicorn.
@@ -176,12 +178,38 @@ Ref: - https://www.brandcrock.com/how-to-fix-invalid-command-requestheader-in-th
 
 ## Maintenance
 
-To update the source code (bugfix, update catalog):
+### To update the source code (bugfix, update catalog):
 
  - `cd /var/www/emec-2021-api` (or wherever the source code is) and `git pull`
- - If you want to update the catalog, **activate virtualenv** (see above) and then:
+ - If you want to update the catalog, it is stored as:
    ```commandline
-   python emec_2021/emec.py
+   emec_2021/emec.py
    ```
+   
+#### Option 1:
+   
+   - remove the file
+   - restart gunicorn (see above)
+   - restart apache (see above), 
+   - open the API url in a browser. This will re-create the catalog **once**. Because
+     you do not care about the response, best is to type the URL with parameters 
+     speeding up the search, e.g., `<API_URL>?format=text&minmag=5`
+
+#### Option 2: 
+  
+  - activate virtualenv (see above) 
+  - Execute:
+    ```commandline
+    python emec_2021/emec.py
+    ```
   - restart gunicorn (see above) 
   - restart apache (see above)
+
+
+### Test locally the flask app on the browser (GET request):
+
+- Activate virtualenv, 
+- cd the repository main root and execute:
+  ```
+  FLASK_APP=emec_2021.flaskapp FLASK_DEBUG=1 flask run
+  ```
