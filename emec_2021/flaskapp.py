@@ -1,3 +1,6 @@
+from multiprocessing.pool import ThreadPool
+from multiprocessing import TimeoutError  # multiprocess timeouterror
+
 from flask import Flask, request, send_file
 import pandas as pd
 
@@ -17,9 +20,11 @@ def get_catalog():
     return _catalog
 
 
+TIMEOUT_S = 25  # max execution time, after wich timeouterror is raised
+
+
 @app.route("/", methods=['GET', 'POST'])
 def get_events():
-    print('ok')
     catalog = get_catalog()
     params = request.args
     method = to_xml
@@ -35,7 +40,13 @@ def get_events():
                 method = to_text
                 continue
             catalog = apply_query_param(catalog, param, value)
-        return send_file(method(catalog), as_attachment=False, mimetype=mimetype)
+
+        pool = ThreadPool(processes=1)
+        result = pool.apply_async(method, args=(catalog, )).get(timeout=TIMEOUT_S)
+        return send_file(result, as_attachment=False, mimetype=mimetype)
+
+    except TimeoutError as terr:
+        return "Request took too long. Please narrow your search", 504
     except Exception as exc:
         return str(exc), 500
 
