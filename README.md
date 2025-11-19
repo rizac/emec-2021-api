@@ -3,7 +3,7 @@
 FDSN web API serving data of the
 [European-Mediterranean Earthquake Catalogue – Version 2021](https://gfzpublic.gfz-potsdam.de/pubman/item/item_5023147)
 
-** NOTE: MAINTENANCE SECTION AT THE PAGE BOTTOM **
+**NOTE: MAINTENANCE SECTION AT THE PAGE BOTTOM**
 
 In this document we will show how to install and run Gunicorn,
 a pure-Python HTTP server for WSGI applications that will serve the API data
@@ -182,13 +182,14 @@ Ref: - https://www.brandcrock.com/how-to-fix-invalid-command-requestheader-in-th
 
  - `cd /var/www/emec-2021-api` (or wherever the source code is) and `git pull`
  - If you want to update the catalog, it is stored as:
-   ```commandline
-   emec_2021/emec.py
    ```
+   emec_2021/EMEC-2021_events.hdf
+   ```
+   (name might vary, in case check for an HDF file)
    
 #### Option 1:
    
-   - remove the file
+   - remove the file (if you do not find the file, it should be an HDF file in the directory above)
    - restart gunicorn (see above)
    - restart apache (see above), 
    - open the API url in a browser. This will re-create the catalog **once**. Because
